@@ -1,15 +1,51 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { ArrowLeft, Plus, X } from 'lucide-react';
 import { TagChip } from '../components/TagChip';
 import { TAGS } from '../data/mockData';
 import { ApplicationStatus, Tag } from '../types';
+import supabase from '../../supabase-client';
 
 interface QuestionForm {
   id: string;
   question: string;
   response: string;
   tags: Tag[];
+}
+
+const addApplication = async (
+  title: string,
+  status: ApplicationStatus,
+  dateCreated: string,
+  questions: QuestionForm[]
+) => {
+  const { data, error } = await supabase
+    .from('ApplicationLogs')
+    .insert([
+      {
+        title,
+        status,
+        date_created: dateCreated,
+        questions: questions,
+      },
+    ])
+    .select();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
+};
+
+const fetchApplications = async () => {
+  const { data, error } = await supabase.from('ApplicationLogs').select('*');
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data;
 }
 
 export default function CreateApplication() {
@@ -20,6 +56,17 @@ export default function CreateApplication() {
   const [questions, setQuestions] = useState<QuestionForm[]>([
     { id: '1', question: '', response: '', tags: [] },
   ]);
+
+  useEffect(() => {
+    const loadApplications = async () => {
+      try {
+        await fetchApplications();
+      } catch (error) {
+        console.error('Failed to fetch applications:', error);
+      }
+    };
+    loadApplications();
+  }, []);
 
   const addQuestion = () => {
     const newId = (questions.length + 1).toString();
@@ -64,10 +111,13 @@ export default function CreateApplication() {
     );
   };
 
-  const handleSave = () => {
-    // In a real app, this would save to backend/database
-    console.log('Saving application:', { title, status, dateCreated, questions });
-    navigate('/applications');
+  const handleSave = async () => {
+    try {
+      await addApplication(title, status, dateCreated, questions);
+      navigate('/applications');
+    } catch (error) {
+      console.error('Failed to save application:', error);
+    }
   };
 
   return (

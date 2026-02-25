@@ -1,24 +1,41 @@
 import { Link } from 'react-router';
 import { Calendar, FileText, Filter } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { StatusBadge } from '../components/StatusBadge';
 import { MOCK_APPLICATIONS } from '../data/mockData';
 import { ApplicationStatus } from '../types';
+import supabase from '../../supabase-client';
 
 export default function AllApplications() {
+  const [applications, setApplications] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | 'all'>('all');
   const [sortBy, setSortBy] = useState<'date' | 'title'>('date');
 
+  useEffect(() => {
+    const fetchApplications = async () => {
+      const { data, error } = await supabase.from('ApplicationLogs').select('*');
+
+      if (error) {
+        console.error('Failed to fetch applications:', error);
+        return;
+      }
+
+      setApplications(data || []);
+    };
+
+    fetchApplications();
+  }, []);
+
   // Filter and sort applications
-  let filteredApps = MOCK_APPLICATIONS;
+  let filteredApps = applications; // PREV MOCK_APPLICATIONS;
   if (statusFilter !== 'all') {
     filteredApps = filteredApps.filter((app) => app.status === statusFilter);
   }
 
   const sortedApps = [...filteredApps].sort((a, b) => {
     if (sortBy === 'date') {
-      return new Date(b.dateCreated).getTime() - new Date(a.dateCreated).getTime();
+      return new Date(b.date_created).getTime() - new Date(a.date_created).getTime();
     }
     return a.title.localeCompare(b.title);
   });
@@ -104,7 +121,7 @@ export default function AllApplications() {
                 <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
                   <span>
-                    {new Date(app.dateCreated).toLocaleDateString('en-US', {
+                    {new Date(app.date_created).toLocaleDateString('en-US', {
                       month: 'short',
                       day: 'numeric',
                       year: 'numeric',
@@ -114,17 +131,17 @@ export default function AllApplications() {
                 <div className="flex items-center gap-2">
                   <FileText className="w-4 h-4" />
                   <span>
-                    {app.questions.length} {app.questions.length === 1 ? 'question' : 'questions'}
+                    {Array.isArray(app.questions) ? app.questions.length : 0} {Array.isArray(app.questions) && app.questions.length === 1 ? 'question' : 'questions'}
                   </span>
                 </div>
               </div>
 
               {/* Tag Count */}
-              {app.questions.length > 0 && (
+              {Array.isArray(app.questions) && app.questions.length > 0 && (
                 <div className="mt-4 pt-4 border-t border-border">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <span>
-                      {new Set(app.questions.flatMap((q) => q.tags.map((t) => t.id))).size} tags used
+                      {new Set(app.questions.flatMap((q: any) => q.tags?.map((t: any) => t.id) || [])).size} tags used
                     </span>
                   </div>
                 </div>
