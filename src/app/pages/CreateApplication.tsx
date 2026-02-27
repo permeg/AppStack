@@ -118,6 +118,12 @@ export default function CreateApplication() {
     } catch (error) {
       console.error('Failed to save application:', error);
     }
+    console.log('Saving application with data:', {
+      title,
+      status,
+      dateCreated,
+      questions,
+    });
   };
 
   return (
